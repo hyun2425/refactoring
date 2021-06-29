@@ -3,27 +3,13 @@ let invoice = JSON.parse(fs.readFileSync('./invoices.json', 'utf8'));
 let plays = JSON.parse(fs.readFileSync('./plays.json', 'utf8'));
 
 function statement(invoice, plays) {
-  let totalAmount = 0;
-  let volumeCredits = 0;
   let result = `청구 내역 (고객명 : ${invoice.customer})\n`;
-  const format = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format;
 
   for (let perf of invoice.performances) {
-    // 포인트를 적립한다.
-    volumeCredits += Math.max(perf.audience - 30, 0);
-    // 희극 관객 5명마다 추가 포인트를 제공한다.
-    if ('comedy' == playFor(perf).type) volumeCredits += Math.floor(perf.audience / 5);
-
-    // 청구 내역을 출력한다.
-    result += `${playFor(perf).name} : ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
-    totalAmount += amountFor(perf);
+    result += `${playFor(perf).name} : ${usd(amountFor(perf))} (${perf.audience}석)\n`;
   }
-  result += `총액: ${format(totalAmount / 100)}\n`;
-  result += `적립 포인트: ${volumeCredits}점\n`;
+  result += `총액: ${usd(totalAmount())}\n`;
+  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
   return result;
 
   function amountFor(aPerformance) {
@@ -52,6 +38,39 @@ function statement(invoice, plays) {
 
   function playFor(aPerformance) {
     return plays[aPerformance.playID];
+  }
+
+  function volumeCreditsFor(aPerformance) {
+    let result = 0;
+    result += Math.max(aPerformance.audience - 30, 0);
+    if ('comedy' == playFor(aPerformance).type) {
+      result += Math.floor(aPerformance.audience / 5);
+    }
+    return result;
+  }
+
+  function usd(aNumber) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(aNumber / 100);
+  }
+
+  function totalVolumeCredits() {
+    let result = 0;
+    for (let perf of invoice.performances) {
+      result = volumeCreditsFor(perf);
+    }
+    return result;
+  }
+
+  function totalAmount() {
+    let result = 0;
+    for (let perf of invoice.performances) {
+      result += amountFor(perf);
+    }
+    return result;
   }
 }
 
